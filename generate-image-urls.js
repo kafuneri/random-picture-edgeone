@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const imageBaseUrl = "./images";
+// 设定静态资源的绝对根路径，用于前端页面生成
+const imageBaseUrl = "/images"; 
 const apiFilePath = path.join("functions", "api.js");
 const indexHtmlPath = path.join("images", "index.html");
 const rootDir = path.join(process.cwd(), "images");
@@ -11,9 +12,8 @@ const isImage = (filename) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
 // 1. 收集本地 PC 和 Phone 图片路径
 const walkDir = (dir) => {
   const results = [];
-  // 如果目录不存在，直接返回空数组
   if (!fs.existsSync(dir)) return results;
-  
+
   const list = fs.readdirSync(dir);
   list.forEach((file) => {
     const filePath = path.join(dir, file);
@@ -27,13 +27,12 @@ const walkDir = (dir) => {
   return results;
 };
 
-// 2. 读取 txt 文件中的外链图片 (新增功能)
+// 2. 读取 txt 文件中的外链图片
 const readExternalUrls = (filename) => {
   const filePath = path.join(rootDir, filename);
   if (fs.existsSync(filePath)) {
     console.log(`📄 发现配置文件: ${filename}，正在读取外链...`);
     const content = fs.readFileSync(filePath, "utf-8");
-    // 按行分割，去除首尾空格，过滤掉空行
     return content
       .split(/[\r\n]+/)
       .map((line) => line.trim())
@@ -42,15 +41,11 @@ const readExternalUrls = (filename) => {
   return [];
 };
 
-// 获取本地图片
 const localPcImages = walkDir(path.join(rootDir, "pc"));
 const localPhoneImages = walkDir(path.join(rootDir, "phone"));
-
-// 获取外链图片
 const externalPcImages = readExternalUrls("pc.txt");
 const externalPhoneImages = readExternalUrls("phone.txt");
 
-// 合并列表
 const pcImages = [...localPcImages, ...externalPcImages];
 const phoneImages = [...localPhoneImages, ...externalPhoneImages];
 
@@ -58,25 +53,42 @@ console.log(`📊 统计: PC图片 ${pcImages.length} 张 (本地 ${localPcImage
 console.log(`📊 统计: Phone图片 ${phoneImages.length} 张 (本地 ${localPhoneImages.length}, 外链 ${externalPhoneImages.length})`);
 
 // === 3. 生成 functions/api.js ===
-// 修改逻辑：生成的代码需要判断是“相对路径”还是“绝对外链”
+// 核心逻辑注入：动态 Origin 获取与 URLSearchParams 参数解析
 const apiJsContent = `
 export function onRequestGet(context) {
   const pc = ${JSON.stringify(pcImages)};
   const phone = ${JSON.stringify(phoneImages)};
-  const userAgent = context.request.headers.get("user-agent") || "";
-  const isMobile = /mobile|android|iphone|ipad|ipod/i.test(userAgent);
-  const list = isMobile ? phone : pc;
   
+  // 解析当前请求的上下文信息
+  const requestUrl = new URL(context.request.url);
+  const typeParam = requestUrl.searchParams.get("type");
+  const currentOrigin = requestUrl.origin; // 获取客户端实际访问的域名 (如 https://image.api.kafuchino.top)
+  
+  let list;
+
+  // 终端强制分发策略
+  if (typeParam === "pc") {
+    list = pc;
+  } else if (typeParam === "phone") {
+    list = phone;
+  } else {
+    // 默认 User-Agent 嗅探策略
+    const userAgent = context.request.headers.get("user-agent") || "";
+    const isMobile = /mobile|android|iphone|ipad|ipod/i.test(userAgent);
+    list = isMobile ? phone : pc;
+  }
+
+  // 兜底防御机制
   if (list.length === 0) {
-    return Response.redirect("${imageBaseUrl}/notfound.jpg", 302);
+    return Response.redirect(currentOrigin + "/images/notfound.jpg", 302);
   }
 
   const randomItem = list[Math.floor(Math.random() * list.length)];
-  
-  // 判断是否为外链 (以 http 开头)
-  const url = randomItem.startsWith("http") 
-    ? randomItem 
-    : "${imageBaseUrl}/" + randomItem;
+
+  // 绝对外链与本地资源的差异化处理
+  const url = randomItem.startsWith("http")
+    ? randomItem
+    : currentOrigin + "/images/" + randomItem;
 
   return Response.redirect(url, 302);
 }
@@ -98,7 +110,7 @@ let html = `<!DOCTYPE html>
     li { background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); overflow: hidden; word-break: break-all; display: flex; flex-direction: column; align-items: center; }
     .preview img {
       width: 100%;
-      height: 140px; 
+      height: 140px;
       object-fit: cover;
       border-radius: 6px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -119,7 +131,6 @@ let html = `<!DOCTYPE html>
       overflow: hidden;
     }
 
-    /* Modal 样式 */
     .modal {
       display: none;
       position: fixed;
@@ -147,10 +158,11 @@ let html = `<!DOCTYPE html>
 `;
 
 [...pcImages, ...phoneImages].forEach((imgPath, index) => {
-  // 同样判断是否为外链
-  const fullUrl = imgPath.startsWith("http") ? imgPath : `${imageBaseUrl}/${imgPath}`;
+  const isHttp = imgPath.startsWith("http");
+  // 前端页面直接使用绝对路径 /images/...，依赖浏览器自动拼接当前访问域名
+  const fullUrl = isHttp ? imgPath : `${imageBaseUrl}/${imgPath}`;
   const modalId = `modal-${index}`;
-  const displayName = imgPath.startsWith("http") ? "🔗 外链图片" : imgPath;
+  const displayName = isHttp ? "🔗 外链图片" : imgPath;
 
   html += `
     <li>

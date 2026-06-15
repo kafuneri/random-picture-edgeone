@@ -61,9 +61,10 @@ https://image.baidu.com/search/down?url=https://tvax3.sinaimg.cn//large/0072Vf1p
 ## 🛠️ API 使用说明
 假设您的项目域名为 https://example.com
 
-获取随机图片（自动跳转） https://example.com/api (浏览器访问此地址将直接跳转到一张随机图片)
-
-查看图库预览 访问 https://example.com/images 即可浏览所有已收录的图片。
+- **获取自适应图片**：访问 `https://example.com/api`（根据设备 UA 自动跳转到一张随机图片）
+- **获取电脑端图片**：访问 `https://example.com/api?type=pc`（强制跳转电脑壁纸）
+- **获取手机端图片**：访问 `https://example.com/api?type=phone`（强制跳转手机壁纸）
+- **查看图库预览**：访问 `https://example.com/images` 即可浏览所有已收录的图片。
 
 ## ⚠️ 免责声明 (Disclaimer)
 图片版权：本项目仅作为技术展示与个人学习使用。项目默认包含或通过配置文件引用的所有图片资源均收集自互联网，版权归原作者所有。
