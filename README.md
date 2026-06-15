@@ -53,9 +53,9 @@
 
 **示例 (`images/pc.txt`)：**
 ```text
-https://image.baidu.com/search/down?url=https://tvax3.sinaimg.cn//large/0072Vf1pgy1foxkbxnphoj31hc0u0tpt.jpg
-https://image.baidu.com/search/down?url=https://tvax3.sinaimg.cn//large/a15b4afely1fnt9m9avezj21hc0u0twg.jpg
-https://image.baidu.com/search/down?url=https://tvax3.sinaimg.cn//large/0072Vf1pgy1foxkimfevkj31hc0u0tmy.jpg
+https://photo.api.kafuchino.top/pixiv/0000.webp
+https://photo.api.kafuchino.top/pixiv/0001.webp
+https://photo.api.kafuchino.top/pixiv/0002.webp
 ```
 
 ## 🛠️ API 使用说明

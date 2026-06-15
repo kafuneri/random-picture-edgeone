@@ -99,6 +99,14 @@ fs.writeFileSync(apiFilePath, apiJsContent);
 console.log("✅ 生成 functions/api.js 成功");
 
 // === 4. 生成 images/index.html ===
+// 将数据结构化，按文件夹类别进行归类
+const fileData = {
+  "pc": localPcImages.map(p => ({ url: `${imageBaseUrl}/${p}`, name: p })),
+  "phone": localPhoneImages.map(p => ({ url: `${imageBaseUrl}/${p}`, name: p })),
+  "ext-pc": externalPcImages.map(p => ({ url: p, name: p })),
+  "ext-phone": externalPhoneImages.map(p => ({ url: p, name: p }))
+};
+
 let html = `<!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -106,20 +114,32 @@ let html = `<!DOCTYPE html>
   <title>CDN 文件索引</title>
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    h1 { margin-bottom: 0.5rem; }
+    
+    /* 导航样式 */
+    #breadcrumb { margin-bottom: 2rem; font-size: 1.1rem; color: #555; }
+    #breadcrumb a { color: #0066cc; text-decoration: none; }
+    #breadcrumb a:hover { text-decoration: underline; }
+
     ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; list-style: none; padding: 0; }
-    li { background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); overflow: hidden; word-break: break-all; display: flex; flex-direction: column; align-items: center; }
+    li { background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); overflow: hidden; word-break: break-all; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s; }
+    li:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    
+    /* 文件夹专属样式 */
+    .folder-icon { font-size: 4rem; line-height: 1; margin-bottom: 0.8rem; text-align: center; }
+    .folder-link { text-decoration: none; color: #333; text-align: center; font-weight: bold; width: 100%; display: block; padding: 20px 0; }
+
+    /* 图片预览样式 */
+    .preview { text-decoration: none; color: inherit; width: 100%; cursor: zoom-in; }
     .preview img {
       width: 100%;
       height: 140px;
       object-fit: cover;
       border-radius: 6px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      cursor: zoom-in;
       transition: transform 0.2s;
     }
-    .preview img:hover {
-      transform: scale(1.03);
-    }
+    .preview img:hover { transform: scale(1.03); }
     .preview div {
       margin-top: 0.5rem;
       font-size: 0.85rem;
@@ -131,6 +151,7 @@ let html = `<!DOCTYPE html>
       overflow: hidden;
     }
 
+    /* JS 模态框样式 */
     .modal {
       display: none;
       position: fixed;
@@ -147,42 +168,105 @@ let html = `<!DOCTYPE html>
       border-radius: 10px;
       box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
     }
-    .modal:target {
-      display: flex;
-    }
   </style>
 </head>
 <body>
   <h1>🖼️ 图片索引 (PC: ${pcImages.length} / Phone: ${phoneImages.length})</h1>
-  <ul>
-`;
+  <div id="breadcrumb"></div>
+  <ul id="gallery"></ul>
 
-[...pcImages, ...phoneImages].forEach((imgPath, index) => {
-  const isHttp = imgPath.startsWith("http");
-  // 前端页面直接使用绝对路径 /images/...，依赖浏览器自动拼接当前访问域名
-  const fullUrl = isHttp ? imgPath : `${imageBaseUrl}/${imgPath}`;
-  const modalId = `modal-${index}`;
-  const displayName = isHttp ? "🔗 外链图片" : imgPath;
+  <div class="modal" id="modal">
+    <img id="modal-img" src="" alt="预览大图">
+  </div>
 
-  html += `
-    <li>
-      <a class="preview" href="#${modalId}">
-        <img src="${fullUrl}" alt="${displayName}" loading="lazy" />
-        <div>${displayName}</div>
-      </a>
-    </li>
-    <div class="modal" id="${modalId}" onclick="location.hash='';">
-      <img src="${fullUrl}" alt="${displayName}" />
-    </div>
-  `;
-});
+  <script>
+    // 注入结构化数据
+    const fileData = ${JSON.stringify(fileData)};
+    
+    const gallery = document.getElementById('gallery');
+    const breadcrumb = document.getElementById('breadcrumb');
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modal-img');
 
-html += `
-  </ul>
+    // 文件夹中文映射配置
+    const folderConfig = {
+      "pc": "📁 pc",
+      "phone": "📱 phone",
+      "ext-pc": "🔗 外链pc",
+      "ext-phone": "🔗 外链phone"
+    };
+
+    // 路由渲染逻辑
+    function renderView(hash) {
+      gallery.innerHTML = '';
+      
+      // 首页：展示四大文件夹
+      if (!hash || hash === '/' || hash === '') {
+        breadcrumb.innerHTML = '🏠 根目录';
+        Object.keys(folderConfig).forEach(key => {
+          // 只渲染包含图片的文件夹
+          if (fileData[key].length > 0) {
+            gallery.innerHTML += \`
+              <li>
+                <a href="#/\${key}" class="folder-link">
+                  <div class="folder-icon">\${folderConfig[key].substring(0,2)}</div>
+                  <div>\${folderConfig[key].substring(3)} (\${fileData[key].length})</div>
+                </a>
+              </li>
+            \`;
+          }
+        });
+      } 
+      // 子目录：展示该类目下的所有图片
+      else {
+        const folderKey = hash.replace(/^\\//, '');
+        const folderName = folderConfig[folderKey] ? folderConfig[folderKey].substring(3) : folderKey;
+        breadcrumb.innerHTML = \`<a href="#/">🏠 根目录</a> / \${folderName}\`;
+        
+        const files = fileData[folderKey] || [];
+        files.forEach(file => {
+          gallery.innerHTML += \`
+            <li>
+              <a class="preview" href="#" data-full="\${file.url}">
+                <img src="\${file.url}" alt="\${file.name}" loading="lazy" />
+                <div>\${file.name}</div>
+              </a>
+            </li>
+          \`;
+        });
+      }
+    }
+
+    // 事件代理：处理图片预览
+    document.body.addEventListener('click', (e) => {
+      const previewLink = e.target.closest('.preview[data-full]');
+      if (previewLink) {
+        e.preventDefault(); // 阻止 a 标签默认的锚点跳转行为
+        modalImg.src = previewLink.dataset.full;
+        modal.style.display = 'flex';
+      }
+    });
+
+    // 关闭模态框
+    modal.addEventListener('click', () => {
+      modal.style.display = 'none';
+      modalImg.src = '';
+    });
+
+    // 监听 Hash 路由变化
+    window.addEventListener('hashchange', () => {
+      const hashPath = decodeURIComponent(window.location.hash.substring(2));
+      renderView(hashPath);
+    });
+
+    // 首次进入渲染
+    const initialPath = window.location.hash.length > 2 ? decodeURIComponent(window.location.hash.substring(2)) : '';
+    renderView(initialPath);
+  </script>
 </body>
 </html>
 `;
 
 fs.mkdirSync(path.dirname(indexHtmlPath), { recursive: true });
 fs.writeFileSync(indexHtmlPath, html);
-console.log("✅ 生成 images/index.html 成功");
+console.log("✅ 生成 images/index.html 成功，含分类导航");
