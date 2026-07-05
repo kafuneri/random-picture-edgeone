@@ -2,37 +2,71 @@ const fs = require("fs");
 const path = require("path");
 
 // 设定静态资源的绝对根路径，用于前端页面生成
-const imageBaseUrl = "/images"; 
-const apiFilePath = path.join("functions", "api.js");
-const indexHtmlPath = path.join("images", "index.html");
-const rootDir = path.join(process.cwd(), "images");
+const imageBaseUrl = "/images";
+const rootDir = process.cwd();
+
+// 目录隔离：定义源码与构建产物路径
+const sourceImagesDir = path.join(rootDir, "images");
+const distDir = path.join(rootDir, "dist");
+const distImagesDir = path.join(distDir, "images");
+
+// 核心规范：边缘函数必须保留在项目根目录，静态页面输出至 dist
+const apiFilePath = path.join(rootDir, "functions", "api.js");
+const indexHtmlPath = path.join(distImagesDir, "index.html");
 
 const isImage = (filename) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
 
-// 1. 收集本地 PC 和 Phone 图片路径
-const walkDir = (dir) => {
-  const results = [];
-  if (!fs.existsSync(dir)) return results;
+// 初始化：清理并创建隔离的 dist 目录
+if (fs.existsSync(distDir)) {
+  fs.rmSync(distDir, { recursive: true, force: true });
+}
+fs.mkdirSync(distImagesDir, { recursive: true });
 
-  const list = fs.readdirSync(dir);
+// 拷贝项目根目录的 API 说明页 index.html 至 dist
+const rootIndexFile = path.join(rootDir, "index.html");
+if (fs.existsSync(rootIndexFile)) {
+  fs.copyFileSync(rootIndexFile, path.join(distDir, "index.html"));
+}
+
+// 1. 收集本地 PC 和 Phone 图片路径，并物理拷贝隔离至 dist
+const walkAndCopyDir = (srcDir, destDir) => {
+  const results = [];
+  if (!fs.existsSync(srcDir)) return results;
+
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  const list = fs.readdirSync(srcDir);
   list.forEach((file) => {
-    const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
+    const srcPath = path.join(srcDir, file);
+    const destPath = path.join(destDir, file);
+    const stat = fs.statSync(srcPath);
+
     if (stat && stat.isDirectory()) {
-      results.push(...walkDir(filePath));
-    } else if (isImage(file)) {
-      results.push(path.relative(rootDir, filePath).replace(/\\/g, "/"));
+      results.push(...walkAndCopyDir(srcPath, destPath));
+    } else {
+      // 剔除可能存在的旧 index.html 产物
+      if (file === "index.html") return;
+
+      fs.copyFileSync(srcPath, destPath);
+
+      if (isImage(file)) {
+        results.push(path.relative(sourceImagesDir, srcPath).replace(/\\/g, "/"));
+      }
     }
   });
   return results;
 };
 
-// 2. 读取 txt 文件中的外链图片
+// 2. 读取 txt 文件中的外链图片，并同步拷贝至 dist 保持结构完整
 const readExternalUrls = (filename) => {
-  const filePath = path.join(rootDir, filename);
-  if (fs.existsSync(filePath)) {
+  const srcPath = path.join(sourceImagesDir, filename);
+  const destPath = path.join(distImagesDir, filename);
+  if (fs.existsSync(srcPath)) {
     console.log(`📄 发现配置文件: ${filename}，正在读取外链...`);
-    const content = fs.readFileSync(filePath, "utf-8");
+    fs.copyFileSync(srcPath, destPath);
+    const content = fs.readFileSync(srcPath, "utf-8");
     return content
       .split(/[\r\n]+/)
       .map((line) => line.trim())
@@ -41,8 +75,8 @@ const readExternalUrls = (filename) => {
   return [];
 };
 
-const localPcImages = walkDir(path.join(rootDir, "pc"));
-const localPhoneImages = walkDir(path.join(rootDir, "phone"));
+const localPcImages = walkAndCopyDir(path.join(sourceImagesDir, "pc"), path.join(distImagesDir, "pc"));
+const localPhoneImages = walkAndCopyDir(path.join(sourceImagesDir, "phone"), path.join(distImagesDir, "phone"));
 const externalPcImages = readExternalUrls("pc.txt");
 const externalPhoneImages = readExternalUrls("phone.txt");
 
@@ -53,7 +87,6 @@ console.log(`📊 统计: PC图片 ${pcImages.length} 张 (本地 ${localPcImage
 console.log(`📊 统计: Phone图片 ${phoneImages.length} 张 (本地 ${localPhoneImages.length}, 外链 ${externalPhoneImages.length})`);
 
 // === 3. 生成 functions/api.js ===
-// 核心逻辑注入：动态 Origin 获取与 URLSearchParams 参数解析
 const apiJsContent = `
 export function onRequestGet(context) {
   const pc = ${JSON.stringify(pcImages)};
@@ -62,7 +95,7 @@ export function onRequestGet(context) {
   // 解析当前请求的上下文信息
   const requestUrl = new URL(context.request.url);
   const typeParam = requestUrl.searchParams.get("type");
-  const currentOrigin = requestUrl.origin; // 获取客户端实际访问的域名 (如 https://image.api.kafuchino.top)
+  const currentOrigin = requestUrl.origin;
   
   let list;
 
@@ -94,12 +127,13 @@ export function onRequestGet(context) {
 }
 `.trim();
 
-fs.mkdirSync(path.dirname(apiFilePath), { recursive: true });
+if (!fs.existsSync(path.dirname(apiFilePath))) {
+  fs.mkdirSync(path.dirname(apiFilePath), { recursive: true });
+}
 fs.writeFileSync(apiFilePath, apiJsContent);
-console.log("✅ 生成 functions/api.js 成功");
+console.log("✅ 生成 functions/api.js 成功 (保留在根目录以便节点读取)");
 
-// === 4. 生成 images/index.html ===
-// 将数据结构化，按文件夹类别进行归类
+// === 4. 生成 dist/images/index.html ===
 const fileData = {
   "pc": localPcImages.map(p => ({ url: `${imageBaseUrl}/${p}`, name: p })),
   "phone": localPhoneImages.map(p => ({ url: `${imageBaseUrl}/${p}`, name: p })),
@@ -267,6 +301,5 @@ let html = `<!DOCTYPE html>
 </html>
 `;
 
-fs.mkdirSync(path.dirname(indexHtmlPath), { recursive: true });
 fs.writeFileSync(indexHtmlPath, html);
-console.log("✅ 生成 images/index.html 成功，含分类导航");
+console.log("✅ 生成 dist/images/index.html 成功，已输出至隔离目录");
