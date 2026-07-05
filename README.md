@@ -14,7 +14,7 @@
 ### 方式一：一键部署
 无需手动配置，点击下方按钮即可直接将本项目部署到腾讯云 EdgeOne Pages：
 
-[![Deploy to EdgeOne Pages](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https://github.com/kafuneri/random-picture-edgeone&build-command=npm%20run%20build)
+[![Deploy to EdgeOne Pages](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/pages/new?repository-url=https://github.com/kafuneri/random-picture-edgeone)
 
 ### 方式二：手动部署
 1. **Fork 本仓库**
@@ -28,6 +28,7 @@
    - 框架预设:	`Other`
    - 输出目录：`dist`
    - 构建命令：`npm run build`   
+   > 仓库已内置 `edgeone.json` 配置文件，EdgeOne 会自动读取 `dist` 输出目录与 `npm run build` 构建命令，如您修改了构建逻辑，注意需改动`edgeone.json`
    <img width="2041" height="1136" alt="image" src="https://github.com/user-attachments/assets/1a7fb8cc-148c-4f89-8b11-1779da34d8fc" />
 
 4. **部署上线**
