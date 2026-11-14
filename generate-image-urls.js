@@ -28,6 +28,12 @@ if (fs.existsSync(rootIndexFile)) {
   fs.copyFileSync(rootIndexFile, path.join(distDir, "index.html"));
 }
 
+// 拷贝兜底图片 notfound.jpg 至 dist/images
+const notFoundImg = path.join(sourceImagesDir, "notfound.jpg");
+if (fs.existsSync(notFoundImg)) {
+  fs.copyFileSync(notFoundImg, path.join(distImagesDir, "notfound.jpg"));
+}
+
 // 1. 收集本地 PC 和 Phone 图片路径，并物理拷贝隔离至 dist
 const walkAndCopyDir = (srcDir, destDir) => {
   const results = [];
@@ -232,24 +238,19 @@ let html = `<!DOCTYPE html>
 
     // 路由渲染逻辑
     function renderView(hash) {
-      gallery.innerHTML = '';
-      
       // 首页：展示四大文件夹
       if (!hash || hash === '/' || hash === '') {
         breadcrumb.innerHTML = '🏠 根目录';
-        Object.keys(folderConfig).forEach(key => {
-          // 只渲染包含图片的文件夹
-          if (fileData[key].length > 0) {
-            gallery.innerHTML += \`
-              <li>
-                <a href="#/\${key}" class="folder-link">
-                  <div class="folder-icon">\${folderConfig[key].substring(0,2)}</div>
-                  <div>\${folderConfig[key].substring(3)} (\${fileData[key].length})</div>
-                </a>
-              </li>
-            \`;
-          }
-        });
+        gallery.innerHTML = Object.keys(folderConfig)
+          .filter(key => fileData[key] && fileData[key].length > 0)
+          .map(key => \`
+            <li>
+              <a href="#/\${key}" class="folder-link">
+                <div class="folder-icon">\${folderConfig[key].substring(0,2)}</div>
+                <div>\${folderConfig[key].substring(3)} (\${fileData[key].length})</div>
+              </a>
+            </li>
+          \`).join('');
       } 
       // 子目录：展示该类目下的所有图片
       else {
@@ -258,16 +259,14 @@ let html = `<!DOCTYPE html>
         breadcrumb.innerHTML = \`<a href="#/">🏠 根目录</a> / \${folderName}\`;
         
         const files = fileData[folderKey] || [];
-        files.forEach(file => {
-          gallery.innerHTML += \`
-            <li>
-              <a class="preview" href="#" data-full="\${file.url}">
-                <img src="\${file.url}" alt="\${file.name}" loading="lazy" />
-                <div>\${file.name}</div>
-              </a>
-            </li>
-          \`;
-        });
+        gallery.innerHTML = files.map(file => \`
+          <li>
+            <a class="preview" href="#" data-full="\${file.url}">
+              <img src="\${file.url}" alt="\${file.name}" loading="lazy" />
+              <div>\${file.name}</div>
+            </a>
+          </li>
+        \`).join('');
       }
     }
 
