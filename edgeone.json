@@ -1,0 +1,60 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "./dist",
+  "headers": [
+    {
+      "source": "/*",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-Requested-With" },
+        { "key": "Access-Control-Max-Age", "value": "86400" }
+      ]
+    },
+    {
+      "source": "/images/pc/*",
+      "headers": [
+        { "key": "Cache-Control", "value": "max-age=31536000" }
+      ]
+    },
+    {
+      "source": "/images/phone/*",
+      "headers": [
+        { "key": "Cache-Control", "value": "max-age=31536000" }
+      ]
+    },
+    {
+      "source": "/api",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    }
+  ],
+  "caches": [
+    {
+      "source": "/images/pc/*",
+      "cacheTtl": 8640000
+    },
+    {
+      "source": "/images/phone/*",
+      "cacheTtl": 8640000
+    },
+    {
+      "source": "/api",
+      "cacheTtl": 0
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/api/images/pc/*",
+      "destination": "/images/pc/:splat",
+      "statusCode": 301
+    },
+    {
+      "source": "/api/images/phone/*",
+      "destination": "/images/phone/:splat",
+      "statusCode": 301
+    }
+  ]
+}
