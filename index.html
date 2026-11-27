@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>随机图片api</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%96%BC%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+        <style>
+            html,
+            body {
+                margin: 0;
+                color: #424242;
+                font-weight: 300;
+                font-family: "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "PingFang SC", "Microsoft YaHei",
+                    "Source Han Sans SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif";
+                font-size: 16px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            header {
+                padding: 40vh 0 8vh 0;
+                text-align: center;
+                font-weight: 100;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
+                height: 100vh;
+                overflow: hidden;
+                background-image: url('./api?random');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+
+            h1,
+            h3 {
+                color: rgba(255, 192, 203, 0.9); /* 半透明粉色 */
+                font-weight: 500;
+                text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+                margin: 0;
+            }
+
+            h1 {
+                font-size: 3.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+                font-weight: 300;
+            }
+
+            h3 {
+                font-size: 1.5rem;
+                font-weight: 300;
+            }
+
+            #scroll-down {
+                background-color: transparent;
+                margin-top: 2rem;
+                width: 2rem;
+                height: 2rem;
+                border-radius: 50%;
+                border: 2px solid #424242;
+                cursor: pointer;
+                animation: bounce 2s infinite 2s;
+            }
+
+            #scroll-down::before {
+                display: block;
+                content: "";
+                transform: rotate(-45deg) translate(0.15rem, 0.15rem);
+                width: 0.4rem;
+                height: 0.4rem;
+                border: 2px solid #424242;
+                border-width: 0px 0 2px 2px;
+            }
+
+            a {
+                text-decoration: none;
+                color: #79c37c;
+            }
+
+            main {
+                padding: 1vw;
+            }
+
+            section {
+                padding: 1rem;
+            }
+
+            footer {
+                padding: 1vh;
+                text-align: center;
+                background-color: #aaaaaa;
+            }
+
+            footer a {
+                color: #ddd;
+            }
+
+            footer a:hover {
+                text-decoration: underline;
+            }
+
+            @keyframes bounce {
+                0%,
+                100%,
+                20%,
+                50%,
+                80% {
+                    transform: translateY(0);
+                }
+
+                40% {
+                    transform: translateY(-10px);
+                }
+
+                60% {
+                    transform: translateY(-5px);
+                }
+            }
+
+            pre {
+                background-color: #f5f5f5;
+                padding: 2rem 1rem;
+                border-radius: 4px;
+                overflow: auto;
+            }
+        </style>
+    </head>
+
+    <body>
+        <header>
+            <section>
+                <h1>随机图片API</h1>
+                <h3>说明文档</h3>
+            </section>
+            <button id="scroll-down"></button>
+        </header>
+        <main>
+            <section>
+                <h2><strong>假定 API 部署到 https://example.net</strong></h2>
+                <p>
+                    访问
+                    <a href="https://example.net/api?random">https://example.net/api?random</a>
+                    ，跳转至自适应随机图片地址
+                </p>
+                <p>
+                    访问
+                    <a href="https://example.net/api?type=pc">https://example.net/api?type=pc</a>
+                    ，跳转至随机电脑图片地址
+                </p>
+                <p>
+                    访问
+                    <a href="https://example.net/api?type=phone">https://example.net/api?type=phone</a>
+                    ，跳转至随机手机图片地址
+                </p>
+                <p>
+                    访问
+                    <a href="https://example.net/images">https://example.net/images</a>
+                    ，跳转至图片列表地址
+                </p>
+            </section>
+        </main>
+        <script>
+            document.querySelector("main").innerHTML = document
+                .querySelector("main")
+                .innerHTML.replace(/https:\/\/example.net/g, location.origin);
+
+            document.getElementById("scroll-down").addEventListener("click", function () {
+                document.querySelector("main").scrollIntoView({
+                    behavior: "smooth",
+                });
+            });
+        </script>
+        <footer>
+            <p>
+                <a href="https://github.com/kafuneri/random-picture-edgeone">Source Code</a>
+            </p>
+        </footer>
+    </body>
+</html>
